@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "deny": ["mcp__Claude_Code_Remote__archive_session"]
+  },
+  "env": {
+    "HYPERFRAMES_NO_TELEMETRY": "1",
+    "DO_NOT_TRACK": "1"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chan-lenh-nguy-hiem.py", "timeout": 10}]},
+      {"matcher": "Write|Edit|MultiEdit|NotebookEdit|Read|Grep", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/bao-ve-tep.py", "timeout": 10}]},
+      {"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chan-tu-cam.py", "timeout": 10}]}
+    ],
+    "PostToolUse": [
+      {"matcher": "Write|Edit", "hooks": [{"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/soat-chu.py", "timeout": 10}]}
+    ]
+  }
+}

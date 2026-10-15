@@ -1,0 +1,175 @@
+<!doctype html>
+<!-- Khung mẫu 2 ô nhịp (4 giây ở 120 BPM): nút -> vòng tải -> dấu tích -> nút. Lặp liền.
+     Dạng dự án HyperFrames (8/10/2026): chép thành <thư mục dự án>/index.html. seek(t) giữ nguyên,
+     HyperFrames gọi nó qua registerFrameSource. Đổi độ dài thì sửa data-duration ở #root và #stage cho bằng T.
+     Mở rộng: thêm trạng thái vào bảng KEY, thêm lớp nội dung vào #shape, giữ nguyên seek(t). -->
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1440px; height: 1440px; overflow: hidden; background: #ECEAE6; }
+  body { font-family: Geist, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  /* Không will-change, không transition: camera phóng to sẽ làm chữ mờ. */
+  #cam { position: absolute; left: 720px; top: 720px; transform-origin: 0 0; }
+  #shape { position: absolute; background: #0A0A0A; color: #FFF; overflow: hidden; }
+  /* Lớp nội dung canh tâm tuyệt đối. Không xếp chồng bằng grid: lớp rộng nhất kéo lệch lớp nhỏ.
+     Dùng thuộc tính translate cho canh tâm, để transform còn trống cho hoạt ảnh. */
+  #shape > * { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
+  .label { font-size: 30px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
+  #cursor { position: absolute; left: 0; top: 0; width: 56px; height: 56px; }
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="4" data-width="1440" data-height="1440" data-fps="60" data-no-timeline>
+<div id="stage" class="clip" data-start="0" data-duration="4" data-track-index="0" data-no-timeline style="position:absolute;inset:0">
+<div id="cam">
+  <div id="shape">
+    <span class="label" id="lbl">Get started</span>
+    <svg id="spin" width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="17" fill="none"
+      stroke="#FFF" stroke-width="3" stroke-linecap="round" stroke-dasharray="60 200"/></svg>
+    <svg id="check" width="44" height="44" viewBox="0 0 44 44"><path id="checkPath" d="M12 23 l7 7 l14 -15"
+      fill="none" stroke="#FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+      stroke-dasharray="32" /></svg>
+  </div>
+</div>
+<!-- Con trỏ ở không gian màn hình, không bị camera phóng; nét 1.5 khớp nét icon. -->
+<svg id="cursor" viewBox="0 0 24 24"><path d="M4 2.5 L4 19 L8.6 14.8 L11.6 21.5 L14.4 20.3 L11.4 13.7 L17.8 13.7 Z"
+  fill="#0A0A0A" stroke="#FFF" stroke-width="1.5" stroke-linejoin="round"/></svg>
+</div>
+<!-- Nhạc: thêm thẻ audio ở đây theo Bước 6 của SKILL.md. -->
+</div>
+
+<script>
+/* ==== spring.js (chép nguyên, giữ một tệp HTML) ==== */
+// Lò xo dạng đóng: mọi giá trị là hàm thuần của t (giây). Không trạng thái, không timer.
+// Chép nguyên tệp vào thẻ <script> của tệp HTML (không dùng module: file:// chặn import).
+
+// Tham số kiểu Apple: response = chu kỳ dao động (giây), bounce = 0 (không vọt) .. 0.25 (vọt khoảng 2%, mức tối đa cho phép).
+const SPRING = {
+  snap:  { response: 0.30, bounce: 0.00 },  // con trỏ, nội dung nhỏ
+  base:  { response: 0.42, bounce: 0.22 },  // khối hình đổi kích thước, bo góc
+  lazy:  { response: 0.60, bounce: 0.10 },  // cạnh đuôi của chỉ báo tab, camera
+};
+
+// Độ lệch còn lại so với đích tại thời điểm t, bắt đầu từ lệch x0, vận tốc v0.
+function springOffset(x0, v0, t, { response, bounce }) {
+  if (t <= 0) return x0;
+  const w = (2 * Math.PI) / response;
+  const z = Math.min(1, Math.max(0, 1 - bounce));
+  if (z >= 1) return (x0 + (v0 + w * x0) * t) * Math.exp(-w * t);   // tắt dần tới hạn
+  const wd = w * Math.sqrt(1 - z * z);
+  return Math.exp(-z * w * t) * (x0 * Math.cos(wd * t) + ((v0 + z * w * x0) / wd) * Math.sin(wd * t));
+}
+
+// Phản hồi bước: 0 -> 1.
+const step = (t, p) => (t <= 0 ? 0 : 1 - springOffset(1, 0, t, p));
+
+// Một giá trị đổi đích nhiều lần = tổng các lò xo, mỗi lần đổi một lò xo.
+// keys: [{ t, v, p? }] sắp theo t; key đầu là giá trị lúc bắt đầu. p riêng từng key ghi đè p chung.
+// loop = T: cộng đuôi lò xo của vòng trước, để giá trị tại T khớp giá trị tại 0 (cả vận tốc).
+//           Bắt buộc: key cuối có v bằng key đầu.
+function track(keys, t, p = SPRING.base, loop = 0) {
+  let v = keys[0].v;
+  for (let i = 1; i < keys.length; i++) {
+    const d = keys[i].v - keys[i - 1].v, q = keys[i].p || p;
+    v += d * step(t - keys[i].t, q);
+    if (loop) v -= d * springOffset(1, 0, t - keys[i].t + loop, q);
+  }
+  return v;
+}
+
+// Kéo trực tiếp: trong lúc giữ chuột, giá trị lấy từ vị trí con trỏ; nhả ra thì lò xo về đích
+// từ đúng chỗ đang đứng (kèm vận tốc lúc nhả, đo bằng sai phân).
+// hold: { t0, t1 } khoảng giữ; fromCursor(t) -> giá trị khi đang giữ; rest: đích sau khi nhả.
+function dragged(t, base, hold, fromCursor, rest, p = SPRING.base) {
+  if (t < hold.t0) return base;
+  if (t <= hold.t1) return fromCursor(t);
+  const h = 1 / 240, x1 = fromCursor(hold.t1);
+  const v1 = (x1 - fromCursor(hold.t1 - h)) / h;
+  return rest + springOffset(x1 - rest, v1, t - hold.t1, p);
+}
+
+// Kéo quá giới hạn thì giãn có lực cản (kiểu iOS): càng kéo càng nặng, không bao giờ vượt quá max + dim.
+function rubber(x, min, max, dim, c = 0.55) {
+  const over = (d) => (c * d * dim) / (dim + c * d);
+  if (x > max) return max + over(x - max);
+  if (x < min) return min - over(min - x);
+  return x;
+}
+
+// Hai cạnh của chỉ báo (tab, núm công tắc) đi trên hai lò xo khác nhau:
+// cạnh dẫn nhanh, cạnh đuôi chậm, nên chỉ báo dài ra khi chạy rồi co lại khi tới.
+// stops: [{ t, l, r }] vị trí cạnh trái/phải theo thời gian.
+function liquidEdges(stops, t, fast = SPRING.snap, slow = SPRING.lazy, loop = 0) {
+  const L = [], R = [];
+  stops.forEach((s, i) => {
+    const right = i > 0 && s.l > stops[i - 1].l;          // đang chạy sang phải
+    L.push({ t: s.t, v: s.l, p: right ? slow : fast });
+    R.push({ t: s.t, v: s.r, p: right ? fast : slow });
+  });
+  return { l: track(L, t, fast, loop), r: track(R, t, fast, loop) };
+}
+
+// Nội dung đổi trong khối đang biến hình: mỗi lớp có giờ vào và giờ ra riêng, mờ nhòe ngắn,
+// lớp cũ ra xong lớp mới mới vào hẳn (gối nhau tối đa `overlap` giây) để chữ không chồng lên nhau.
+function swap(t, tIn, tOut, dur = 0.12, overlap = 0.04) {
+  const a = Math.min(1, Math.max(0, (t - (tIn + overlap)) / dur));
+  const b = Math.min(1, Math.max(0, (t - tOut) / dur));
+  const o = a * (1 - b);
+  return { opacity: o, blur: (1 - o) * 6, y: (1 - a) * 6 - b * 6 };
+}
+</script>
+<script>
+const BPM = 120, SPB = 60 / BPM, T = 8 * SPB;          // 2 ô nhịp
+const b = (n) => n * SPB;                                // phách -> giây
+
+// Bảng mốc: mỗi thuộc tính là một track; key cuối = key đầu để lặp.
+const KEY = {
+  w:  [{t:0,v:360},{t:b(2)+.05,v:96},{t:b(6),v:360},{t:T,v:360}],
+  h:  [{t:0,v:96}],
+  cam:[{t:0,v:2.5},{t:b(2)+.05,v:4.6},{t:b(6),v:2.5},{t:T,v:2.5}],
+  press:[{t:0,v:1},{t:b(2),v:0.95,p:SPRING.snap},{t:b(2)+.12,v:1},{t:T,v:1}],
+  // con trỏ (toạ độ cảnh, gốc ở tâm khối): vào nút trước phách 2, rời đi, quay về chỗ cũ
+  cx: [{t:0,v:210},{t:b(1),v:40},{t:b(3),v:150},{t:b(7),v:210},{t:T,v:210}],
+  cy: [{t:0,v:120},{t:b(1),v:10},{t:b(3),v:90},{t:b(7),v:120},{t:T,v:120}],
+};
+const $ = (id) => document.getElementById(id);
+const tr = (k, t, p) => track(KEY[k], t, p, T);
+
+window.seek = function (t) {
+  t = ((t % T) + T) % T;
+  const cam = tr('cam', t, SPRING.lazy);
+  const w = tr('w', t), h = tr('h', t), s = tr('press', t, SPRING.snap);
+  $('cam').style.transform = `scale(${cam})`;
+  Object.assign($('shape').style, {
+    width: w + 'px', height: h + 'px', left: -w / 2 + 'px', top: -h / 2 + 'px',
+    borderRadius: h / 2 + 'px', transform: `scale(${s})`,
+  });
+  // nội dung: mỗi lớp có giờ vào/ra riêng
+  const show = (el, o) => Object.assign(el.style, {
+    opacity: o.opacity, filter: `blur(${o.blur}px)`, transform: `translateY(${o.y}px)`,
+  });
+  const lbl1 = swap(t, -1, b(2)), lbl2 = swap(t, b(6) - .04, T + 1);
+  show($('lbl'), lbl1.opacity > lbl2.opacity ? lbl1 : lbl2);
+  show($('spin'), swap(t, b(2) + .1, b(5) - .1));
+  $('spin').style.transform += ` rotate(${(t - b(2)) * 540}deg)`;
+  show($('check'), swap(t, b(5) - .06, b(6) - .08));
+  $('checkPath').style.strokeDashoffset = 32 * (1 - step(t - b(5) + .02, SPRING.snap));
+  // con trỏ: toạ độ cảnh * camera -> màn hình
+  const x = 720 + tr('cx', t, SPRING.snap) * cam, y = 720 + tr('cy', t, SPRING.snap) * cam;
+  const down = 1 - (1 - s) * 3;                       // con trỏ nhấn cùng lò xo với nút
+  $('cursor').style.transform = `translate(${x - 6}px, ${y - 3}px) scale(${down})`;
+};
+seek(0);
+// HyperFrames giữ đồng hồ: mỗi khung gọi seek(t), không tự chạy.
+// Bản có registerFrameSource (từ khoảng 0.8.140) thì đăng ký khối #stage, PM dời, cắt được trong Studio;
+// bản cũ hơn (đang ghim 0.8.134) thì nghe sự kiện hf-seek.
+if (window.__hyperframes && window.__hyperframes.registerFrameSource) {
+  window.__hyperframes.registerFrameSource({
+    element: document.getElementById("stage"),
+    ready: document.fonts.ready,
+    render: (t) => window.seek(t),
+  });
+} else {
+  window.addEventListener("hf-seek", (e) => window.seek(e.detail.time));
+}
+</script>
+</body></html>

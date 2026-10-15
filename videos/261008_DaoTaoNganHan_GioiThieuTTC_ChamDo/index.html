@@ -1,0 +1,430 @@
+<!doctype html>
+<!-- Video giới thiệu TTC: chấm đỏ đi xuyên 6 cảnh. 1920x1080, 60fps, 15 giây, lặp liền.
+     Mọi hình tính từ t trong seek(t); không CSS transition, timer, biến nhớ giữa các khung.
+     Bảng nhịp: bang-nhip.md. Sửa số ở khối HANG và PHACH, không sửa rải rác. -->
+<html><head><meta charset="utf-8">
+<style>
+@font-face {
+  font-family: 'BVP';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url(assets/fonts/BeVietnamPro-700-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'BVP';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url(assets/fonts/BeVietnamPro-700-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'BVP';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url(assets/fonts/BeVietnamPro-700-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'BVP';
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url(assets/fonts/BeVietnamPro-900-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'BVP';
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url(assets/fonts/BeVietnamPro-900-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'BVP';
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url(assets/fonts/BeVietnamPro-900-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+html,body{margin:0;background:#F4EFE8}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden}
+canvas{position:absolute;left:0;top:0;width:1920px;height:1080px}
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="15" data-width="1920" data-height="1080" data-fps="60" data-no-timeline>
+<div id="stage" class="clip" data-start="0" data-duration="15" data-track-index="0" data-no-timeline style="position:absolute;inset:0">
+<canvas id="c" width="1920" height="1080"></canvas>
+</div>
+<audio id="nhac" class="clip" src="assets/nhac.wav" data-start="0" data-duration="15" data-track-index="1" data-volume="0.9"></audio>
+</div>
+<script>
+// Lò xo dạng đóng: mọi giá trị là hàm thuần của t (giây). Không trạng thái, không timer.
+// Chép nguyên tệp vào thẻ <script> của tệp HTML (không dùng module: file:// chặn import).
+
+// Tham số kiểu Apple: response = chu kỳ dao động (giây), bounce = 0 (không vọt) .. 0.25 (vọt khoảng 2%, mức tối đa cho phép).
+const SPRING = {
+  snap:  { response: 0.30, bounce: 0.00 },  // con trỏ, nội dung nhỏ
+  base:  { response: 0.42, bounce: 0.22 },  // khối hình đổi kích thước, bo góc
+  lazy:  { response: 0.60, bounce: 0.10 },  // cạnh đuôi của chỉ báo tab, camera
+};
+
+// Độ lệch còn lại so với đích tại thời điểm t, bắt đầu từ lệch x0, vận tốc v0.
+function springOffset(x0, v0, t, { response, bounce }) {
+  if (t <= 0) return x0;
+  const w = (2 * Math.PI) / response;
+  const z = Math.min(1, Math.max(0, 1 - bounce));
+  if (z >= 1) return (x0 + (v0 + w * x0) * t) * Math.exp(-w * t);   // tắt dần tới hạn
+  const wd = w * Math.sqrt(1 - z * z);
+  return Math.exp(-z * w * t) * (x0 * Math.cos(wd * t) + ((v0 + z * w * x0) / wd) * Math.sin(wd * t));
+}
+
+// Phản hồi bước: 0 -> 1.
+const step = (t, p) => (t <= 0 ? 0 : 1 - springOffset(1, 0, t, p));
+
+// Một giá trị đổi đích nhiều lần = tổng các lò xo, mỗi lần đổi một lò xo.
+// keys: [{ t, v, p? }] sắp theo t; key đầu là giá trị lúc bắt đầu. p riêng từng key ghi đè p chung.
+// loop = T: cộng đuôi lò xo của vòng trước, để giá trị tại T khớp giá trị tại 0 (cả vận tốc).
+//           Bắt buộc: key cuối có v bằng key đầu.
+function track(keys, t, p = SPRING.base, loop = 0) {
+  let v = keys[0].v;
+  for (let i = 1; i < keys.length; i++) {
+    const d = keys[i].v - keys[i - 1].v, q = keys[i].p || p;
+    v += d * step(t - keys[i].t, q);
+    if (loop) v -= d * springOffset(1, 0, t - keys[i].t + loop, q);
+  }
+  return v;
+}
+
+// Kéo trực tiếp: trong lúc giữ chuột, giá trị lấy từ vị trí con trỏ; nhả ra thì lò xo về đích
+// từ đúng chỗ đang đứng (kèm vận tốc lúc nhả, đo bằng sai phân).
+// hold: { t0, t1 } khoảng giữ; fromCursor(t) -> giá trị khi đang giữ; rest: đích sau khi nhả.
+function dragged(t, base, hold, fromCursor, rest, p = SPRING.base) {
+  if (t < hold.t0) return base;
+  if (t <= hold.t1) return fromCursor(t);
+  const h = 1 / 240, x1 = fromCursor(hold.t1);
+  const v1 = (x1 - fromCursor(hold.t1 - h)) / h;
+  return rest + springOffset(x1 - rest, v1, t - hold.t1, p);
+}
+
+// Kéo quá giới hạn thì giãn có lực cản (kiểu iOS): càng kéo càng nặng, không bao giờ vượt quá max + dim.
+function rubber(x, min, max, dim, c = 0.55) {
+  const over = (d) => (c * d * dim) / (dim + c * d);
+  if (x > max) return max + over(x - max);
+  if (x < min) return min - over(min - x);
+  return x;
+}
+
+// Hai cạnh của chỉ báo (tab, núm công tắc) đi trên hai lò xo khác nhau:
+// cạnh dẫn nhanh, cạnh đuôi chậm, nên chỉ báo dài ra khi chạy rồi co lại khi tới.
+// stops: [{ t, l, r }] vị trí cạnh trái/phải theo thời gian.
+function liquidEdges(stops, t, fast = SPRING.snap, slow = SPRING.lazy, loop = 0) {
+  const L = [], R = [];
+  stops.forEach((s, i) => {
+    const right = i > 0 && s.l > stops[i - 1].l;          // đang chạy sang phải
+    L.push({ t: s.t, v: s.l, p: right ? slow : fast });
+    R.push({ t: s.t, v: s.r, p: right ? fast : slow });
+  });
+  return { l: track(L, t, fast, loop), r: track(R, t, fast, loop) };
+}
+
+// Nội dung đổi trong khối đang biến hình: mỗi lớp có giờ vào và giờ ra riêng, mờ nhòe ngắn,
+// lớp cũ ra xong lớp mới mới vào hẳn (gối nhau tối đa `overlap` giây) để chữ không chồng lên nhau.
+function swap(t, tIn, tOut, dur = 0.12, overlap = 0.04) {
+  const a = Math.min(1, Math.max(0, (t - (tIn + overlap)) / dur));
+  const b = Math.min(1, Math.max(0, (t - tOut) / dur));
+  const o = a * (1 - b);
+  return { opacity: o, blur: (1 - o) * 6, y: (1 - a) * 6 - b * 6 };
+}
+
+</script>
+<script>
+// ---------------- HANG ----------------
+const W = 1920, H = 1080, T = 15, CX = 960, CY = 540;
+const CREAM = '#F4EFE8', INK = '#0A0A0A', RED = '#F32409', GREY = '#D9D2C9', WHITE = '#FFFFFF';
+const FONT = 'BVP';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, u) => a + (b - a) * u;
+const sm = (x) => { x = cl(x); return x * x * (3 - 2 * x); };
+const P = {
+  snap: SPRING.snap, base: SPRING.base, lazy: SPRING.lazy,
+  crit: { response: 0.30, bounce: 0 }, soft: { response: 0.55, bounce: 0 },
+  ret: { response: 0.24, bounce: 0 }, jump: { response: 0.45, bounce: 0.10 },
+  graph: { response: 0.90, bounce: 0.50 },     // lò xo duy nhất: vừa đẩy chấm vừa vẽ đường
+  shoot: { response: 0.35, bounce: 0 }, hop: { response: 0.40, bounce: 0 },
+  glyph: { response: 0.38, bounce: 0.10 },
+};
+const S = (t, t0, p = P.base) => step(t - t0, p);
+const mix = (a, b, u) => {
+  const pa = [1, 3, 5].map(i => parseInt(a.substr(i, 2), 16)), pb = [1, 3, 5].map(i => parseInt(b.substr(i, 2), 16));
+  return 'rgb(' + pa.map((v, i) => Math.round(lerp(v, pb[i], cl(u)))).join(',') + ')';
+};
+// Mốc nhịp 120 BPM, mỗi phách 0.5 giây (bảng nhịp bang-nhip.md)
+const PH = { click: 1.0, letters: 1.5, dotMove: 1.95, heroOut: 2.95, jump: 3.0, graph: 3.5, callout: 5.0, exitGraph: 5.5,
+  shoot: 6.0, grow: 6.5, square: 6.85, pill: 7.55, contract: 8.0, words: 8.5, wordsOut: 10.0, halfA: 10.1, halfB: 10.9,
+  card: 11.5, back: 13.5 };
+const SPAN = 2.2, GX0 = 300, GW = 1000, GY0 = 820, GH = 400, PPS = GW / SPAN;
+const GXE = GW;
+
+// ---------------- CHỮ ----------------
+const wcache = {};
+const fontOK = (wt, ch) => document.fonts.check(`${wt} 100px ${FONT}`, ch);
+function adv(ch, wt) {
+  const k = wt + ch; if (wcache[k] !== undefined) return wcache[k];
+  ctx.font = `${wt} 100px ${FONT}`; const w = ctx.measureText(ch).width / 100;
+  if (fontOK(wt, ch)) wcache[k] = w;            // chỉ nhớ số đo khi phông đã tải xong, tránh nhớ số đo của phông dự phòng
+  return w;
+}
+function layout(str, size, wt, track = 0) {
+  let x = 0; const g = [];
+  for (const ch of str.normalize('NFC')) { g.push({ ch, x }); x += adv(ch, wt) * size + track; }
+  return { g, w: x - track };
+}
+function glyph(ch, x, y, size, wt, color, alpha = 1, rot = 0) {
+  if (alpha <= 0.004 || ch === ' ') return;
+  ctx.save(); ctx.globalAlpha = cl(alpha);
+  ctx.translate(x + adv(ch, wt) * size / 2, y - size * 0.3); ctx.rotate(rot);
+  ctx.font = `${wt} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(ch, 0, size * 0.3); ctx.restore();
+}
+function disc(x, y, r, color, alpha = 1) { if (r <= 0.2) return; ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); ctx.restore(); }
+function pill(cx, cy, w, h, r, color, rot = 0, alpha = 1) {
+  if (w <= 0.5 || h <= 0.5) return;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(cx, cy); ctx.rotate(rot); ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, Math.min(r, w / 2, h / 2)); ctx.fill(); ctx.restore();
+}
+
+// ---------------- BỐ CỤC (tính một lần sau khi phông tải xong) ----------------
+let LY = null;
+function lay() {
+  if (LY) return LY;
+  const ready = fontOK(700, 'Rút gọn') && fontOK(900, 'Kỹ năng Học Làm') && fontOK(900, 'ỆỮỲ');
+  const lab = layout('Rút gọn kỹ năng', 96, 700), TW = 220, gap = 52, total = TW + gap + lab.w;
+  const TL = CX - total / 2, lx = TL + TW + gap, lyb = 574;
+  const hero = layout('Kỹ năng', 300, 900, -6), hl = CX - (hero.w + 34 + 64) / 2, hyb = 640;
+  const px = hl + hero.w + 34 + 32, py = hyb - 32;
+  // vòng chữ
+  const words = ['MARKETING', 'TRÍ TUỆ NHÂN TẠO', 'NGOẠI NGỮ', 'KỸ NĂNG MỀM', 'THỰC HÀNH'], RS = 52, RR = 420, TR = 8;
+  const ls = words.map(w => layout(w, RS, 900, TR)), sum = ls.reduce((a, l) => a + l.w, 0);
+  const wgap = (2 * Math.PI * RR - sum) / words.length;
+  const ring = []; let pos = 0, k = 0;
+  ls.forEach(l => { l.g.forEach(g => { if (g.ch !== ' ') ring.push({ ch: g.ch, a: (pos + g.x + adv(g.ch, 900) * RS / 2) / RR - Math.PI / 2, k: k++ }); }); pos += l.w + wgap; });
+  // thẻ cuối
+  const c1 = layout('TTC', 52, 700, 22), c2a = layout('Học nhanh.', 170, 900, 0), c2b = layout('Làm được ngay', 170, 900, 0), c3 = layout('Đăng ký tại TTC', 56, 700, 2);
+  const c2bl = CX - (c2b.w + 24 + 52) / 2;
+  const out = { lab, TW, TL, lx, lyb, hero, hl, hyb, px, py, ring, RR, RS,
+    c1, c1x: CX - c1.w / 2, c2a, c2ax: CX - c2a.w / 2, c2b, c2bx: c2bl, c3, c3x: CX - c3.w / 2,
+    pdx: c2bl + c2b.w + 24 + 26, pdy: 690 - 26 };
+  if (ready) LY = out;                          // chưa đủ phông thì tính lại ở khung sau
+  return out;
+}
+// Chấm đi xuyên: x, y, r theo thời gian (t từ 3.0 trở đi); trước đó là nút/pill.
+const KX = (L) => [{ t: 0, v: L.px }, { t: PH.jump, v: GX0, p: P.jump }, { t: PH.exitGraph, v: 200 - GXE, p: P.hop }, { t: PH.shoot, v: CX - GXE, p: P.shoot },
+  { t: 11.9, v: L.pdx - GXE, p: P.base }, { t: PH.back, v: CX - GXE, p: P.crit }];
+const KY = (L) => [{ t: 0, v: L.py }, { t: PH.jump, v: GY0, p: P.jump }, { t: PH.exitGraph, v: CY + GH, p: P.hop }, { t: PH.shoot, v: CY + GH },
+  { t: 11.9, v: L.pdy + GH, p: P.base }, { t: PH.back, v: CY + GH, p: P.crit }];
+const gYat = (tp) => GY0 - GH * step(tp, P.graph);         // cùng hàm lò xo cho đường vẽ và chấm
+function dotAt(t) {
+  const L = lay();
+  const gx = PPS * cl(t - PH.graph, 0, SPAN), gy = -GH * step(t - PH.graph, P.graph) + 0;
+  const arc = -260 * Math.sin(Math.PI * cl((t - PH.jump) / 0.5));
+  let x = track(KX(L), t) + gx, y = track(KY(L), t) + gy + arc;
+  return { x, y };
+}
+const E_END = () => ({ x: GX0 + GXE, y: gYat(SPAN) });
+
+function drawTopLevel(t) {
+  const L = lay();
+  // nền
+  const pB = t < PH.halfB ? 0 : t < PH.halfB + 0.75 ? sm((t - PH.halfB) / 0.75) : t < PH.back + 0.05 ? 1 : t < PH.back + 0.65 ? 1 - sm((t - (PH.back + 0.05)) / 0.6) : 0;
+  const inA = t >= PH.halfA && t < PH.halfA + 0.8;
+  const bg = t < 7.0 ? CREAM : t < PH.halfA + 0.8 ? INK : (pB >= 1 ? INK : CREAM);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const CELL = 40, BAND = 320;
+  if (inA) {
+    const Rw = 1450 * sm((t - PH.halfA) / 0.8);
+    ctx.fillStyle = CREAM;
+    for (let j = -14; j <= 14; j++) for (let i = -24; i <= 24; i++) {
+      const x = CX + i * CELL, y = CY + j * CELL, d = Math.hypot(i * CELL, j * CELL), f = sm((Rw - d) / BAND);
+      if (f > 0.01) { ctx.beginPath(); ctx.arc(x, y, 0.78 * CELL * f, 0, 6.2832); ctx.fill(); }
+    }
+  } else if (pB > 0 && pB < 1) {
+    const Rb = 1500 * pB;
+    ctx.fillStyle = INK;
+    for (let j = -14; j <= 14; j++) for (let i = -24; i <= 24; i++) {
+      const x = CX + i * CELL, y = CY + j * CELL, d = Math.hypot(i * CELL, j * CELL), f = sm((Rb - d) / BAND);
+      if (f > 0.01) { ctx.beginPath(); ctx.arc(x, y, 0.78 * CELL * f, 0, 6.2832); ctx.fill(); }
+    }
+  }
+  // biểu đồ (3.1 - 5.8) và bóng ma lúc quay về (14.1 - 14.8)
+  drawGraph(t);
+  // đường ngang (5.8 - 6.5)
+  if (t > 5.75 && t < 7.2) {
+    const pr = sm((t - 5.8) / 0.4);
+    ctx.fillStyle = INK; ctx.fillRect(200, CY - 2.5, 1520 * pr, 5);
+  }
+  // nút / pill (0 - 3.0) và lúc quay về
+  if (t < 3.0) drawToggleForward(t);
+  // chấm
+  drawDot(t);
+  // hình đen trong đĩa đỏ
+  if (t >= PH.square && t < 8.7) {
+    const sq = S(t, PH.square, P.base), cc = 1 - S(t, PH.contract, P.crit);
+    const rot = Math.PI * S(t, PH.square + 0.1, { response: 0.8, bounce: 0.15 });
+    const pu = S(t, PH.pill, P.base);
+    const w = lerp(440, 900, pu) * sq * cc, h = lerp(440, 280, pu) * sq * cc;
+    pill(CX, CY, w, h, lerp(70, h / 2, cl(pu)), INK, rot);
+  }
+  drawRing(t); drawCard(t); drawLabelLetters(t); drawReturnToggle(t);
+  drawCursor(t);
+}
+
+function drawGraph(t) {
+  const fwd = t > 3.0 && t < 5.9, ghost = t > 14.05 && t < 14.85;
+  if (!fwd && !ghost) return;
+  const L = lay();
+  let a = 1, prog = 1, tp = Math.max(0, t - PH.graph), cMax = Math.min(tp, SPAN);
+  if (fwd) { a = t > PH.exitGraph ? 1 - sm((t - PH.exitGraph) / 0.3) : 1; prog = sm((t - 3.1) / 0.4); }
+  else { a = 0.35 * (t < 14.3 ? sm((t - 14.05) / 0.25) : 1 - sm((t - 14.6) / 0.25)); cMax = SPAN; }
+  ctx.save(); ctx.globalAlpha = a;
+  if (fwd) {
+    ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(GX0 - 60, GY0 + 40); ctx.lineTo(GX0 - 60, lerp(GY0 + 40, 300, prog)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(GX0 - 60, GY0 + 40); ctx.lineTo(lerp(GX0 - 60, GX0 + GW + 160, prog), GY0 + 40); ctx.stroke();
+    const dp = sm((t - 3.5) / 0.4); ctx.globalAlpha = a * 0.45; ctx.setLineDash([14, 14]); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(GX0 - 60, GY0 - GH); ctx.lineTo(lerp(GX0 - 60, GX0 + GW + 160, dp), GY0 - GH); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = a;
+  }
+  // đường lò xo: cùng hàm step(tp, P.graph) với chấm
+  ctx.strokeStyle = RED; ctx.lineWidth = ghost ? 6 : 10; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(GX0, GY0);
+  for (let tau = 0; tau < cMax; tau += 1 / 90) ctx.lineTo(GX0 + PPS * tau, gYat(tau));
+  ctx.lineTo(GX0 + PPS * cMax, gYat(fwd ? tp : cMax)); ctx.stroke();
+  ctx.restore();
+  if (fwd && t >= PH.callout) {
+    const u = S(t, PH.callout, P.base), txt = 'Làm được ngay', lt = layout(txt, 46, 700), pw = lt.w + 80, ph = 96;
+    const x0 = GX0 + GXE + 70, y0 = GY0 - GH;
+    ctx.save(); ctx.globalAlpha = cl(u * 2) * a; ctx.translate(x0, y0); ctx.scale(Math.max(u, 0.001), Math.max(u, 0.001));
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.roundRect(0, -ph / 2, pw, ph, 48); ctx.fill();
+    lt.g.forEach(g => glyph(g.ch, 40 + g.x, 16, 46, 700, CREAM)); ctx.restore();
+  }
+}
+
+function drawToggleForward(t) {
+  const L = lay(), k = S(t, PH.click, P.base), kc = cl(k), u1 = S(t, PH.letters, P.crit), u2 = S(t, PH.dotMove, P.base);
+  const L0 = L.TL + 100 * u1, R0 = L.TL + L.TW, cx0 = (L0 + R0) / 2, w0 = R0 - L0;
+  const w = lerp(w0, 64, u2), h = lerp(120, 64, u2), cx = lerp(cx0, L.px, u2), cy = lerp(CY, L.py, u2);
+  pill(cx, cy, w, h, 999, mix(GREY, RED, kc));
+  const kr = 48 * (1 - u1);
+  if (kr > 0.3) disc(L.TL + 60 + 100 * k, CY, kr, mix(RED, WHITE, kc));
+  // sóng nhỏ ở chỗ bấm
+  if (t > PH.click && t < PH.click + 0.4) {
+    const p = (t - PH.click) / 0.4; ctx.save(); ctx.globalAlpha = 0.5 * (1 - p); ctx.strokeStyle = RED; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(L.TL + 60, CY, 48 + 70 * sm(p), 0, 6.2832); ctx.stroke(); ctx.restore();
+  }
+}
+function dotRadius(t) {
+  const big = 1290 * (S(t, PH.grow, { response: 0.55, bounce: 0 }) - S(t, PH.contract + 0.15, { response: 0.5, bounce: 0.12 }));
+  const base = track([{ t: 0, v: 32 }, { t: PH.jump, v: 24, p: P.base }, { t: 8.6, v: 30, p: P.base }, { t: 11.9, v: 26, p: P.base }], t);
+  const beat = (t > 8.5 && t < 10.0) ? 7 * Math.exp(-9 * ((t - 8.5) % 0.5)) : 0;
+  return Math.max(2, base + big + beat);
+}
+function drawDot(t) {
+  if (t < PH.jump) return;
+  const L = lay();
+  if (t < 14.1) { const d = dotAt(t); disc(d.x, d.y, dotRadius(t), RED); return; }
+  let x, y, r;
+  const E = E_END();
+  if (t < 14.3) { const u = sm((t - 14.1) / 0.2); x = lerp(CX, E.x, u); y = lerp(CY, E.y, u); r = 26; }
+  else if (t < 14.6) { const u = sm((t - 14.3) / 0.3), tau = SPAN * (1 - u); x = GX0 + PPS * tau; y = gYat(tau); r = 26; }
+  else return;                                // từ 14.6 chấm do drawReturnToggle vẽ, tránh vẽ hai lần
+  disc(x, y, r, RED);
+}
+function drawReturnToggle(t) {
+  if (t < 14.55) return;
+  const L = lay(), u = S(t, 14.6, P.ret), x = lerp(GX0, L.TL + 60, u), y = lerp(GY0, CY, u);
+  // đường phía sau chấm: nền pill lớn dần quanh chấm (vẽ trước chấm là đủ vì chấm vẽ sau cùng trong drawTopLevel, nên vẽ lại chấm)
+  pill(x - 60 + (220 * u) / 2 + 0, y, 220 * u, 120 * u, 999, GREY, 0, cl(u * 4));
+  disc(x, y, lerp(26, 48, u), RED);
+}
+function drawLabelLetters(t) {
+  const L = lay();
+  if (t < 3.4) {
+    L.lab.g.forEach((g, i) => {
+      const x = L.lx + g.x;
+      if (i < 8) {
+        const t0 = PH.letters + 0.03 * i, v = S(t, t0, P.crit), dir = (i % 2 ? 1 : -1) * (0.55 + 0.12 * (i % 3));
+        glyph(g.ch, x, L.lyb + 420 * v, 96, 700, INK, 1 - cl((t - t0) / 0.3), dir * v);
+      } else {
+        const j = i - 8, hg = L.hero.g[j], t0 = PH.letters + 0.15 + 0.035 * j, u = S(t, t0, P.base);
+        const xx = lerp(x, L.hl + hg.x, u), yy = lerp(L.lyb, L.hyb, u), sz = lerp(96, 300, u);
+        // thoát ra: rơi và xoay, giờ riêng từng chữ
+        const te = PH.heroOut + 0.03 * j, ev = S(t, te, P.crit), dir = (j % 2 ? 1 : -1) * (0.6 + 0.1 * (j % 3));
+        const al = 1 - cl((t - te) / 0.3);
+        if (i === 8) { glyph('k', xx, yy + 520 * ev, sz, u > 0.5 ? 900 : 700, INK, (1 - cl((u - 0.1) / 0.5)) * al, dir * ev); glyph('K', xx, yy + 520 * ev, sz, 900, INK, cl((u - 0.1) / 0.5) * al, dir * ev); }
+        else glyph(g.ch, xx, yy + 520 * ev, sz, u > 0.5 ? 900 : 700, INK, al, dir * ev);
+      }
+    });
+  } else if (t >= 14.2) {
+    L.lab.g.forEach((g, i) => {
+      const t0 = 14.25 + 0.014 * i, w = S(t, t0, P.ret), dir = (i % 2 ? 1 : -1) * (0.55 + 0.12 * (i % 3));
+      glyph(g.ch, L.lx + g.x, L.lyb + (1 - w) * 320, 96, 700, INK, cl(w * 3), dir * (1 - w));
+    });
+  }
+}
+function drawRing(t) {
+  if (t < PH.words || t > PH.halfA + 0.5) return;
+  const L = lay(), th = -1.2 * (1 - S(t, PH.words, { response: 0.9, bounce: 0 })) + 0.22 * (t - PH.words);
+  L.ring.forEach(g => {
+    const u = S(t, PH.words + 0.012 * g.k, P.glyph), v = S(t, PH.wordsOut + 0.006 * g.k, { response: 0.5, bounce: 0 });
+    const rad = L.RR * (1 + 0.4 * (1 - u)) + 2.6 * L.RR * v, a = g.a + th;
+    const x = CX + rad * Math.cos(a), y = CY + rad * Math.sin(a);
+    const ga = cl(u * 1.5) * (1 - cl(v * 2.2));
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a + Math.PI / 2);
+    glyph(g.ch, -adv(g.ch, 900) * L.RS / 2, L.RS * 0.35, L.RS, 900, CREAM, ga);
+    ctx.restore();
+    const da = cl(v * 3) * (1 - cl((v - 0.5) * 2)); if (da > 0.01) disc(x, y, 6, CREAM, da);
+  });
+}
+function cardLine(g, x0, base, size, wt, color, t, tIn, tOut, stagger = 0.022) {
+  g.g.forEach((q, k) => {
+    const u = S(t, tIn + stagger * k, P.glyph), vo = S(t, tOut + 0.012 * k, P.crit), dir = (k % 2 ? 1 : -1) * 0.7;
+    glyph(q.ch, x0 + q.x, base + (1 - u) * 70 + 300 * vo, size, wt, color, cl(u * 2) * (1 - cl((t - (tOut + 0.012 * k)) / 0.25)), dir * vo);
+  });
+}
+function drawCard(t) {
+  if (t < PH.card - 0.1 || t > PH.back + 0.6) return;
+  const L = lay(), o = PH.back;
+  ctx.save(); ctx.globalAlpha = 1;
+  cardLine(L.c1, L.c1x, 300, 52, 700, 'rgba(244,239,232,0.75)', t, 11.45, o);
+  cardLine(L.c2a, L.c2ax, 500, 170, 900, CREAM, t, 11.55, o);
+  cardLine(L.c2b, L.c2bx, 690, 170, 900, CREAM, t, 11.7, o);
+  cardLine(L.c3, L.c3x, 810, 56, 700, CREAM, t, 11.8, o);
+  ctx.restore();
+}
+const CUR = [[0, 0], [0, 38], [10, 29], [17, 44], [25, 40], [18, 26], [31, 26]];
+function drawCursor(t) {
+  const L = lay(), kx = L.TL + 60, R0 = [1500, 820];
+  const al = t < 1.5 ? 1 : t < 1.8 ? 1 - sm((t - 1.5) / 0.3) : t < 14.2 ? 0 : sm((t - 14.2) / 0.2);
+  if (al <= 0.004) return;
+  const x = track([{ t: 0, v: R0[0] }, { t: 0.35, v: kx, p: P.snap }, { t: 1.5, v: kx + 300, p: P.snap }, { t: 13.9, v: R0[0] + 360, p: P.snap }, { t: 14.25, v: R0[0], p: P.snap }], t);
+  const y = track([{ t: 0, v: R0[1] }, { t: 0.35, v: CY, p: P.snap }, { t: 1.5, v: CY + 120, p: P.snap }, { t: 13.9, v: R0[1] + 250, p: P.snap }, { t: 14.25, v: R0[1], p: P.snap }], t);
+  const sc = 1 - 0.2 * (S(t, 1.0, { response: 0.12, bounce: 0 }) - S(t, 1.12, { response: 0.2, bounce: 0.1 }));
+  ctx.save(); ctx.globalAlpha = al; ctx.translate(x, y); ctx.scale(1.6 * sc, 1.6 * sc);
+  ctx.beginPath(); CUR.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+  ctx.fillStyle = INK; ctx.strokeStyle = CREAM; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.fill(); ctx.stroke(); ctx.restore();
+}
+
+window.seek = function (t) { t = ((t % T) + T) % T; ctx.setTransform(1, 0, 0, 1, 0, 0); drawTopLevel(t); };
+window.__ready = Promise.all([['700 40px BVP', 'Rút gọn kỹ năng ĐăngTTC'], ['900 40px BVP', 'Kỹ năng MỀM ỆỮỲ']].map(a => document.fonts.load(a[0], a[1]))).then(() => { lay(); window.seek(0); });
+if (window.__hyperframes && window.__hyperframes.registerFrameSource) {
+  window.__hyperframes.registerFrameSource({ element: document.getElementById('stage'), ready: window.__ready, render: (t) => window.seek(t) });
+} else {
+  window.addEventListener('hf-seek', (e) => window.seek(e.detail.time));
+}
+</script></body></html>
