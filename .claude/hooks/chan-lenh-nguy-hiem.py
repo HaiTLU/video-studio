@@ -151,7 +151,7 @@ def xet_rm(tk, thu_muc):
     for d in dich:
         if trong_kho(d, thu_muc) and not CHO_PHEP.search(os.path.relpath(os.path.join(thu_muc, d), KHO)):
             tra_loi(f"Quy tắc kho: không xóa tệp ({d}). Muốn bỏ một tệp thì chép bản cũ vào "
-                    "04_Archives/Projects/<DuAn>/ bằng cp, hoặc dùng `python3 scripts/archive.py <tệp>`. "
+                    "04_Archives/<DuAn>/ bằng cp. "
                     "Tệp tạm thì đặt trong thư mục scratchpad hoặc /tmp.")
 
 
