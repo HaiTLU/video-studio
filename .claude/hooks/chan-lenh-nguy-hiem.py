@@ -5,8 +5,8 @@ Chặn:
   1. Xóa tệp của kho bằng `rm` hoặc `git rm` (CLAUDE.md: "Không xóa tệp", chép bản cũ vào 04_Archives/).
      Cho phép xóa trong thư mục tạm và thư mục sinh ra khi dựng: /tmp, node_modules, .next,
      __pycache__, khung_*, kiem_*, dist, build, .venv. `git rm --cached` cũng được (không xóa tệp).
-  2. `git push` vào main (main chỉ nhận thay đổi qua PR) và `git push --force` / `-f`
-     (`--force-with-lease` trên nhánh claude/ vẫn được).
+  2. `git push --force` / `-f` / refspec `+nhánh` (`--force-with-lease` trên nhánh claude/ vẫn được).
+     Đẩy thẳng lên main được phép ở kho này (PM cho phép 16/10/2026).
 
   3. Lệnh phá việc chưa commit: `git reset --hard`, `git clean -f`, `git checkout -- .`,
      `git restore .`; và `curl|wget ... | sh|bash` (chạy mã tải về).
@@ -168,15 +168,10 @@ def xet_push(tk, thu_muc):
     if "--force" in co or "-f" in co or any(re.fullmatch(r"-[a-zA-Z]*f[a-zA-Z]*", t) for t in co if not t.startswith("--")):
         tra_loi("Quy tắc kho: không đẩy đè lịch sử bằng `git push --force` / `-f`. "
                 "Trên nhánh claude/ của chính phiên này dùng `--force-with-lease` nếu thật cần.")
-    doi = [t for t in tk[2:] if not t.startswith("-")]
-    refspec = doi[1:] if doi else []
-    for r in refspec:
-        dich = r.split(":")[-1].lstrip("+")
-        if dich in ("main", "refs/heads/main"):
-            tra_loi("Quy tắc kho: main chỉ nhận thay đổi qua PR. Đẩy lên nhánh claude/<tên-việc> rồi tạo PR.")
-    if not refspec and nhanh_hien_tai(thu_muc) == "main":
-        tra_loi("Quy tắc kho: đang ở nhánh main; main chỉ nhận thay đổi qua PR. "
-                "Tạo nhánh claude/<tên-việc> từ main rồi đẩy nhánh đó.")
+    # Kho video-studio: PM cho đẩy thẳng lên main (16/10/2026); vẫn chặn đẩy đè, kể cả refspec dạng +nhánh.
+    for r in [t for t in tk[2:] if not t.startswith("-")][1:]:
+        if r.startswith("+"):
+            tra_loi("Quy tắc kho: không đẩy đè lịch sử bằng refspec `+nhánh`. Dùng `--force-with-lease` trên nhánh claude/ nếu thật cần.")
 
 
 def main():

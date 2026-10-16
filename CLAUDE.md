@@ -39,6 +39,6 @@ Bảng màu, phông, logo: `brand/MAU.md`. Phông và logo đã có trong `brand
 ## Tệp, nhánh, an toàn
 
 - Tên tệp: `YYMMDD_DuAn_NoiDung.ext`. Không xóa tệp; bản cũ chép vào `04_Archives/<DuAn>/` với hậu tố `_v1`, `_v2`.
-- `main` chỉ nhận thay đổi qua PR; mỗi việc một nhánh `claude/<tên-việc>`. PR tạo xong được tự gộp khi không lỗi, không xung đột, không còn góp ý.
-- Hook trong `.claude/hooks/` chặn xóa tệp, `git push` vào main, `--force`, đọc ghi tệp bí mật. Bị chặn thì làm theo cách đúng hook nêu.
+- Kho này được đẩy thẳng lên `main` (PM cho phép 16/10/2026, chỉ áp dụng cho kho video-studio); commit nhỏ, tiêu đề tiếng Việt, không đẩy đè lịch sử. Việc lớn hoặc muốn PM xem trước thì vẫn mở nhánh `claude/<tên-việc>` và PR.
+- Hook trong `.claude/hooks/` chặn xóa tệp, `--force`, đọc ghi tệp bí mật. Bị chặn thì làm theo cách đúng hook nêu.
 - Kỹ năng chép từ kho `thanglong_kb` ngày 15/10/2026. Một số dòng trong kỹ năng còn nhắc `01_Projects/`, `memory/projects/`, `04_Archives/Projects/KhoTaiLieu/`: đó là ghi chú nguồn gốc ở kho cũ, không phải tệp của kho này. Nguồn và giấy phép từng kỹ năng ngoài: `NGUON.md` hoặc `LICENSE` trong thư mục kỹ năng, tổng hợp ở `tai-lieu/NGUON-KY-NANG.md`.
