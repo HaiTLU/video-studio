@@ -10,6 +10,7 @@ Chép từ kho `thanglong_kb` ngày 15/10/2026. Nguồn chi tiết ở `NGUON.md
 | `motion-design` | github.com/LottieFiles/motion-design-skill | MIT |
 | `sound-layer` | github.com/Bodila51/opus-sound-layer | MIT |
 | `watch` | github.com/bradautomates/claude-video | MIT |
+| `remotion-*` (12) | github.com/remotion-dev/skills | Không ghi (dùng nội bộ) |
 | `motion` | github.com/motiondivision/ai-kit | MIT |
 | `humanizer` | github.com/blader/humanizer (thêm `tieng-viet.md`) | MIT |
 | `object-separation` | github.com/Barty-Bart/motion-graphics | MIT |
@@ -42,7 +43,7 @@ Chưa mở trang GitHub để kiểm giấy phép và số sao của danh sách 
 
 | Lớp | Repo | Kết luận |
 |---|---|---|
-| Kỹ năng | remotion-dev/skills | Chưa chép: kho không có tệp giấy phép, chờ PM quyết có chép hay không |
+| Kỹ năng | remotion-dev/skills | Đã chép 12 kỹ năng `remotion-*` ngày 16/10/2026 theo yêu cầu PM; kho gốc không có giấy phép, chỉ dùng nội bộ |
 | Kỹ năng | motiondivision/ai-kit | Đã chép thành kỹ năng `motion` ngày 16/10/2026 theo yêu cầu PM (MIT); chỉ dùng cho web, ứng dụng |
 | Kỹ năng | greensock/gsap-skills | Đã có (8 kỹ năng `gsap-*`) |
 | Thiết kế | svg/svgo (MIT) | Công cụ ngoài, xem `tai-lieu/CONG-CU-NGOAI.md` |
