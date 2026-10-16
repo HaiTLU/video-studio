@@ -34,3 +34,27 @@ Tên trong ảnh không có chủ sở hữu, nên kho dưới đây là kho kh�
 | remotion skills | remotion-dev/skills | Không thêm: giấy phép chưa rõ |
 | gsap-skills | greensock/gsap-skills (MIT) | Đã có |
 | motion-design-skill | LottieFiles/motion-design-skill (MIT) | Đã có |
+
+## Đối chiếu 20 repo theo từng lớp (16/10/2026)
+
+Chưa mở trang GitHub để kiểm giấy phép và số sao của danh sách này. Kết luận dựa trên vai trò từng thư viện và những gì kho đã có. Trước khi thêm Satori hoặc Remotion thì kiểm giấy phép.
+
+| Lớp | Repo | Kết luận |
+|---|---|---|
+| Kỹ năng | remotion-dev/skills | Không thêm: trùng `remotion`, giấy phép chưa rõ |
+| Kỹ năng | motiondivision/ai-kit | Không thêm: trùng `gsap-*`, PM đã bỏ kỹ năng Motion ngày 12/10/2026 |
+| Kỹ năng | greensock/gsap-skills | Đã có (8 kỹ năng `gsap-*`) |
+| Thiết kế | svg/svgo | Dùng khi cần: `npx svgo` để làm gọn logo, biểu tượng SVG trước khi đưa vào video |
+| Thiết kế | vercel/satori | Chỉ thêm nếu làm ảnh bìa hàng loạt; cần nhúng phông tiếng Việt của ĐHTL |
+| Chuyển động | greensock/GSAP | Đã có, là thư viện chính của HyperFrames |
+| Chuyển động | juliangarnier/anime | Không cần: HyperFrames đã hỗ trợ sẵn |
+| Chuyển động | motiondivision/motion | Thư viện npm, cài trong từng dự án web khi cần |
+| Chuyển động | rive-app/rive-wasm | Không cần: hợp giao diện tương tác, không hợp dựng ra MP4 |
+| Chuyển động | LottieFiles/dotlottie-web | Không cần: HyperFrames đã hỗ trợ Lottie |
+| Video | remotion-dev/remotion | Chưa dùng; công ty trên 3 người có thể phải mua giấy phép, hỏi PM trước |
+| Video | motion-canvas/motion-canvas | Không cần: trùng HyperFrames |
+| 3D | mrdoob/three.js | Dùng qua HyperFrames cho `video-3d-theo-mau` |
+| 3D | pmndrs/react-three-fiber, drei, react-three-rapier, react-postprocessing | Không cần: chỉ có ích khi dựng bằng React (đi theo Remotion) |
+| Âm thanh | goldfire/howler.js | Không cần: phát âm thanh trên web; trộn âm đã có `hyperframes-audio`, `sound-layer` |
+| Xuất bản | Vanilagy/mediabunny | Không cần: FFmpeg đã làm được |
+| Xuất bản | FFmpeg/FFmpeg | Đã có trên máy |
