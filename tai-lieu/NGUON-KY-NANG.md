@@ -10,6 +10,7 @@ Chép từ kho `thanglong_kb` ngày 15/10/2026. Nguồn chi tiết ở `NGUON.md
 | `motion-design` | github.com/LottieFiles/motion-design-skill | MIT |
 | `sound-layer` | github.com/Bodila51/opus-sound-layer | MIT |
 | `watch` | github.com/bradautomates/claude-video | MIT |
+| `motion` | github.com/motiondivision/ai-kit | MIT |
 | `humanizer` | github.com/blader/humanizer (thêm `tieng-viet.md`) | MIT |
 | `object-separation` | github.com/Barty-Bart/motion-graphics | MIT |
 
@@ -41,11 +42,11 @@ Chưa mở trang GitHub để kiểm giấy phép và số sao của danh sách 
 
 | Lớp | Repo | Kết luận |
 |---|---|---|
-| Kỹ năng | remotion-dev/skills | Không thêm: trùng `remotion`, giấy phép chưa rõ |
-| Kỹ năng | motiondivision/ai-kit | Không thêm: trùng `gsap-*`, PM đã bỏ kỹ năng Motion ngày 12/10/2026 |
+| Kỹ năng | remotion-dev/skills | Chưa chép: kho không có tệp giấy phép, chờ PM quyết có chép hay không |
+| Kỹ năng | motiondivision/ai-kit | Đã chép thành kỹ năng `motion` ngày 16/10/2026 theo yêu cầu PM (MIT); chỉ dùng cho web, ứng dụng |
 | Kỹ năng | greensock/gsap-skills | Đã có (8 kỹ năng `gsap-*`) |
-| Thiết kế | svg/svgo | Dùng khi cần: `npx svgo` để làm gọn logo, biểu tượng SVG trước khi đưa vào video |
-| Thiết kế | vercel/satori | Chỉ thêm nếu làm ảnh bìa hàng loạt; cần nhúng phông tiếng Việt của ĐHTL |
+| Thiết kế | svg/svgo (MIT) | Công cụ ngoài, xem `tai-lieu/CONG-CU-NGOAI.md` |
+| Thiết kế | vercel/satori (MPL-2.0) | Công cụ ngoài, xem `tai-lieu/CONG-CU-NGOAI.md` |
 | Chuyển động | greensock/GSAP | Đã có, là thư viện chính của HyperFrames |
 | Chuyển động | juliangarnier/anime | Không cần: HyperFrames đã hỗ trợ sẵn |
 | Chuyển động | motiondivision/motion | Thư viện npm, cài trong từng dự án web khi cần |
