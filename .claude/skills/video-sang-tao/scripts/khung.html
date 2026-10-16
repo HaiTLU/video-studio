@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- Khung dựng video chuyển động bằng canvas: 1920x1080, 60 khung/giây. Chép thành <thư mục dự án>/index.html.
+     Mọi hình tính từ t trong seek(t): không CSS transition, timer, requestAnimationFrame, Math.random, biến nhớ giữa các khung.
+     Thay: /*FONTS*/ bằng khối @font-face, /*SPRING*/ bằng spring.js, rồi viết cảnh trong drawTopLevel. -->
+<html><head><meta charset="utf-8">
+<style>
+/*FONTS*/
+html,body{margin:0;background:#F4EFE8}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden}
+canvas{position:absolute;left:0;top:0;width:1920px;height:1080px}
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="15" data-width="1920" data-height="1080" data-fps="60" data-no-timeline>
+<div id="stage" class="clip" data-start="0" data-duration="15" data-track-index="0" data-no-timeline style="position:absolute;inset:0">
+<canvas id="c" width="1920" height="1080"></canvas>
+</div>
+<!-- Nhạc: <audio id="nhac" class="clip" src="assets/nhac.wav" data-start="0" data-duration="15" data-track-index="1" data-volume="0.9"></audio> -->
+</div>
+<script>
+/*SPRING*/
+</script>
+<script>
+const W = 1920, H = 1080, T = 15, CX = 960, CY = 540;
+const CREAM = '#F4EFE8', INK = '#0A0A0A', RED = '#F32409';       // đổi theo bản chỉ đạo; một màu nhấn duy nhất
+const FONT = 'BVP';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, u) => a + (b - a) * u;
+const sm = (x) => { x = cl(x); return x * x * (3 - 2 * x); };
+const P = { snap: SPRING.snap, base: SPRING.base, crit: { response: 0.30, bounce: 0 } };
+const S = (t, t0, p = P.base) => step(t - t0, p);
+
+// Đo chữ: chỉ nhớ số đo khi phông đã tải. Nếu nhớ số đo của phông dự phòng, chữ sẽ dính nhau trong video
+// (ảnh chụp Playwright vẫn đẹp vì phông đã tải sẵn), đây là lỗi đã gặp ở video TTC 8/10/2026.
+const wcache = {};
+const fontOK = (wt, ch) => document.fonts.check(`${wt} 100px ${FONT}`, ch);
+function adv(ch, wt) {
+  const k = wt + ch; if (wcache[k] !== undefined) return wcache[k];
+  ctx.font = `${wt} 100px ${FONT}`; const w = ctx.measureText(ch).width / 100;
+  if (fontOK(wt, ch)) wcache[k] = w; return w;
+}
+function glyph(ch, x, y, size, wt, color, alpha = 1, rot = 0) {
+  if (alpha <= 0.004 || ch === ' ') return;
+  ctx.save(); ctx.globalAlpha = cl(alpha); ctx.translate(x + adv(ch, wt) * size / 2, y - size * 0.3); ctx.rotate(rot);
+  ctx.font = `${wt} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.fillText(ch, 0, size * 0.3); ctx.restore();
+}
+function disc(x, y, r, color, a = 1) { if (r <= 0.2) return; ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); ctx.restore(); }
+
+function drawTopLevel(t) {
+  ctx.fillStyle = CREAM; ctx.fillRect(0, 0, W, H);
+  // Cảnh mẫu: vật nối là một chấm đi từ trái sang phải theo lò xo. Thay bằng cảnh của video.
+  const x = track([{ t: 0, v: 300 }, { t: 1, v: 1620, p: P.base }, { t: 7.5, v: 300, p: P.base }], t, P.base, T);
+  disc(x, CY, 36, RED);
+}
+window.seek = function (t) { t = ((t % T) + T) % T; ctx.setTransform(1, 0, 0, 1, 0, 0); drawTopLevel(t); };
+window.__ready = Promise.all([['700 40px BVP', 'Aa Rút gọn'], ['900 40px BVP', 'Aa Kỹ năng']].map(a => document.fonts.load(a[0], a[1]))).then(() => window.seek(0));
+if (window.__hyperframes && window.__hyperframes.registerFrameSource) {
+  window.__hyperframes.registerFrameSource({ element: document.getElementById('stage'), ready: window.__ready, render: (t) => window.seek(t) });
+} else {
+  window.addEventListener('hf-seek', (e) => window.seek(e.detail.time));
+}
+</script></body></html>
